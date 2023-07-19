@@ -54,13 +54,17 @@ const CustomerViewOrders = () => {
 
 
     
-const handleReceivedOrder = async (orderId) => {
+  const handleReceivedOrder = async (orderId, setOrders) => {
     try {
       // Get the order details
       const order = orders.find((order) => order._id === orderId);
   
+      if (!order) {
+        throw new Error('Order not found.');
+      }
+  
       // Calculate the total reward points to increase
-      const totalRewardPoints = order.items.reduce((total, item) => total + item.quantity, 0);
+      const totalRewardPoints = calculateTotalRewardPoints(order.items);
   
       // Get the current reward points of the customer
       const response = await axios.get(`/api/customers/${order.customer._id}`);
@@ -70,21 +74,20 @@ const handleReceivedOrder = async (orderId) => {
       const newRewardPoints = currentRewardPoints + totalRewardPoints;
   
       // Increase the reward points by the item.quantity for each item
-      await axios.patch(`/api/customers/${order.customer._id}`, {
-        rewardPoints: newRewardPoints
-      });
+      await updateCustomerRewardPoints(order.customer._id, newRewardPoints);
   
       // Display an alert to the user
       alert(`Reward points have been incremented by ${totalRewardPoints}`);
   
       // Delete the order
-      await axios.delete(`/api/orders/delete/${orderId}`);
+      await handleDeleteOrder(orderId);
   
       // Refresh the orders list after deletion
-      const ordersResponse = await axios.get('/api/orders/vieworder');
-      setOrders(ordersResponse.data);
+      const ordersData = await fetchOrders();
+      setOrders(ordersData);
     } catch (error) {
-      console.error('Failed to delete order:', error);
+      console.error('Failed to handle received order:', error.message);
+      alert('Failed to handle received order. Please try again later.');
     }
   };
 
